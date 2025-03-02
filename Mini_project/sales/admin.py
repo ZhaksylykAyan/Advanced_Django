@@ -3,10 +3,25 @@ from .models import SalesOrder, Invoice, Discount
 
 @admin.register(SalesOrder)
 class SalesOrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "customer", "product", "quantity", "price", "status", "created_at")
+    list_display = ("id", "customer", "product", "quantity", "price", "status", "created_at", "stripe_payment_id")
     list_filter = ("status", "created_at")
     search_fields = ("customer__username", "product__name")
     actions = ["approve_orders", "process_orders"]
+
+    def mark_as_paid(self, request, queryset):
+        """ Mark selected orders as Paid """
+        queryset.update(status="paid")
+        self.message_user(request, "Selected orders marked as Paid.")
+
+    mark_as_paid.short_description = "Mark selected orders as Paid"
+
+    def generate_invoice(self, request, queryset):
+        """ Generate invoices for selected orders """
+        for order in queryset:
+            Invoice.objects.create(sales_order=order, pdf="invoices/sample.pdf")  # Update path dynamically
+        self.message_user(request, "Invoices generated for selected orders.")
+
+    generate_invoice.short_description = "Generate invoices for selected orders"
 
     def approve_orders(self, request, queryset):
         queryset.update(status="approved")
